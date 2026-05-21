@@ -1,0 +1,89 @@
+/* ==========================================
+   Channels Panel
+   ========================================== */
+
+.channels-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.channel-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-sm);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  border: 1px solid transparent;
+}
+
+.channel-item:hover {
+  background: var(--bg-surface-hover);
+}
+
+.channel-item.active {
+  background: var(--bg-surface);
+  border-color: var(--border-subtle);
+}
+
+.channel-item.disabled {
+  opacity: 0.35;
+}
+
+.channel-item__eye {
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  transition: color var(--transition-fast);
+}
+
+.channel-item.active .channel-item__eye {
+  color: var(--accent-primary);
+}
+
+.channel-item__thumb {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-subtle);
+  overflow: hidden;
+  flex-shrink: 0;
+  background: #000;
+}
+
+.channel-item__thumb canvas {
+  width: 100%;
+  height: 100%;
+  image-rendering: auto;
+  display: block;
+}
+
+.channel-item__label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.channel-item.active .channel-item__label {
+  color: var(--text-primary);
+}
+
+/* Channel color indicators */
+.channel-item--red .channel-item__label { color: var(--ch-red); }
+.channel-item--green .channel-item__label { color: var(--ch-green); }
+.channel-item--blue .channel-item__label { color: var(--ch-blue); }
+.channel-item--alpha .channel-item__label { color: var(--ch-alpha); }
+.channel-item--gray .channel-item__label { color: var(--ch-gray); }
+
+.channel-item--red.active .channel-item__label { color: var(--ch-red); }
+.channel-item--green.active .channel-item__label { color: var(--ch-green); }
+.channel-item--blue.active .channel-item__label { color: var(--ch-blue); }
+.channel-item--alpha.active .channel-item__label { color: var(--ch-alpha); }
+.channel-item--gray.active .channel-item__label { color: var(--ch-gray); }

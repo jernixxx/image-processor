@@ -1,0 +1,226 @@
+/* ==========================================
+   Application Layout
+   ========================================== */
+
+.main-area {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* ==========================================
+   Side Panels
+   ========================================== */
+
+.panel {
+  width: var(--panel-width);
+  min-width: var(--panel-width);
+  background: var(--bg-secondary);
+  border-color: var(--border-color);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  transition: width var(--transition-normal);
+}
+
+.panel--left {
+  border-right: 1px solid var(--border-color);
+}
+
+.panel--right {
+  border-left: 1px solid var(--border-color);
+}
+
+.panel__section {
+  padding: var(--space-lg);
+}
+
+.panel__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-lg);
+  padding-bottom: var(--space-md);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+/* ==========================================
+   Canvas Area
+   ========================================== */
+
+.canvas-area {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    linear-gradient(45deg, #1a1a2a 25%, transparent 25%),
+    linear-gradient(-45deg, #1a1a2a 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1a1a2a 75%),
+    linear-gradient(-45deg, transparent 75%, #1a1a2a 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-color: #15151f;
+  overflow: auto;
+  position: relative;
+}
+
+.canvas-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 100%;
+  min-height: 100%;
+}
+
+#main-canvas {
+  image-rendering: pixelated;
+  box-shadow: var(--shadow-lg);
+  cursor: default;
+  display: none;
+}
+
+#main-canvas.active {
+  display: block;
+}
+
+#main-canvas.eyedropper-active {
+  cursor: crosshair;
+}
+
+/* ==========================================
+   Empty State
+   ========================================== */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-lg);
+  color: var(--text-muted);
+  padding: var(--space-2xl);
+  text-align: center;
+  animation: fadeIn 0.5s ease;
+}
+
+.empty-state svg {
+  opacity: 0.4;
+  stroke: var(--text-muted);
+}
+
+.empty-state p {
+  font-size: var(--font-size-lg);
+  line-height: 1.6;
+}
+
+.empty-state__formats {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-top: var(--space-sm);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================
+   Status Bar
+   ========================================== */
+
+.status-bar {
+  height: var(--statusbar-height);
+  min-height: var(--statusbar-height);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-lg);
+  background: var(--bg-secondary);
+  border-top: 1px solid var(--border-color);
+  font-size: var(--font-size-xs);
+  color: var(--text-secondary);
+  gap: var(--space-md);
+  user-select: none;
+}
+
+.status-bar__item {
+  white-space: nowrap;
+}
+
+.status-bar__separator {
+  color: var(--border-color);
+}
+
+.status-bar__flex {
+  flex: 1;
+}
+
+/* ==========================================
+   Eyedropper Info Panel
+   ========================================== */
+
+.eyedropper-info__color-preview {
+  width: 100%;
+  height: 40px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-color);
+  margin-bottom: var(--space-lg);
+  background: #000;
+  transition: background var(--transition-fast);
+}
+
+.eyedropper-info__table {
+  width: 100%;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono);
+  border-collapse: collapse;
+}
+
+.eyedropper-info__table td {
+  padding: var(--space-xs) var(--space-sm);
+}
+
+.eyedropper-info__table td:first-child {
+  color: var(--text-muted);
+  font-weight: 500;
+  width: 36px;
+}
+
+.eyedropper-info__table td:last-child {
+  color: var(--text-primary);
+}
+
+.eyedropper-info__separator td {
+  padding: var(--space-sm) 0;
+}
+
+.eyedropper-info__separator hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+}
+
+/* ==========================================
+   Drag & Drop Overlay
+   ========================================== */
+
+.canvas-area.drag-over::after {
+  content: 'Отпустите для загрузки';
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(137, 180, 250, 0.08);
+  border: 2px dashed var(--accent-primary);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xl);
+  color: var(--accent-primary);
+  z-index: 100;
+  pointer-events: none;
+  animation: fadeIn 0.2s ease;
+}
