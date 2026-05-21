@@ -1,0 +1,15 @@
+{
+  "name": "image-processor",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Веб-приложение для обработки изображений",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0"
+  }
+}
