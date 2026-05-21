@@ -106,7 +106,7 @@ async function loadFile(file) {
 
     // Определяем количество каналов
     if (doc.format === 'gb7') {
-      state.channelCount = doc.colorDepth === 7 ? 1 : 2; // grayscale or grayscale+alpha
+      state.channelCount = hasAlpha(state.currentData) ? 2 : 1;
     } else {
       state.channelCount = hasAlpha(state.currentData) ? 4 : 3;
     }
@@ -203,7 +203,11 @@ function applyChannelMask(imageData, channels, channelCount) {
   }
 
   // Если только альфа-канал активен, показываем маску
-  if (channelCount >= 3 && !channels.r && !channels.g && !channels.b && channels.a) {
+  const onlyAlpha = (channelCount >= 3)
+    ? (!channels.r && !channels.g && !channels.b && channels.a)
+    : (channelCount === 2 && !channels.r && channels.a);
+
+  if (onlyAlpha) {
     for (let i = 0; i < d.length; i += 4) {
       const a = imageData.data[i + 3];
       d[i] = d[i + 1] = d[i + 2] = a;

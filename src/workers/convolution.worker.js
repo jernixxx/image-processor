@@ -123,8 +123,10 @@ function applyConvolutionRaw(pixelArray, width, height, kernel3x3, channels, edg
 self.onmessage = function (e) {
   const { pixelData, width, height, kernel, channels, edgeMode } = e.data;
 
+  const src = new Uint8ClampedArray(pixelData);
+
   const result = applyConvolutionRaw(
-    pixelData,
+    src,
     width,
     height,
     kernel,
