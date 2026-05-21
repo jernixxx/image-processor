@@ -118,6 +118,10 @@ async function loadFile(file) {
     fitToScreen();
     renderCanvas();
 
+    // Устанавливаем формат сохранения по формату файла
+    const fmtMap = { png: 'png', jpg: 'jpg', jpeg: 'jpg', gb7: 'gb7' };
+    els.saveFormat.value = fmtMap[doc.format] || 'png';
+
     els.emptyState.style.display = 'none';
     canvas.classList.add('active');
   } catch (err) {
@@ -169,18 +173,23 @@ function renderCanvas() {
   // Применяем маску каналов
   const displayed = applyChannelMask(src, state.channels, state.channelCount);
 
-  // Масштабируем
+  // Масштабируем через браузерный drawImage (быстро, GPU-ускорение)
   const dstW = Math.round(srcW * state.zoom);
   const dstH = Math.round(srcH * state.zoom);
 
   if (dstW < 1 || dstH < 1) return;
 
-  // Используем собственную интерполяцию
-  const scaled = resizeImage(displayed, dstW, dstH, INTERPOLATION_METHODS.BILINEAR);
+  // Создаём offscreen-canvas с исходным размером для putImageData
+  const offscreen = document.createElement('canvas');
+  offscreen.width = srcW;
+  offscreen.height = srcH;
+  offscreen.getContext('2d').putImageData(displayed, 0, 0);
 
+  // Рисуем с масштабированием на основной canvas
   canvas.width = dstW;
   canvas.height = dstH;
-  ctx.putImageData(scaled, 0, 0);
+  ctx.imageSmoothingEnabled = state.zoom < 1;
+  ctx.drawImage(offscreen, 0, 0, dstW, dstH);
 }
 
 function applyChannelMask(imageData, channels, channelCount) {
