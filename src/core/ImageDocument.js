@@ -104,7 +104,7 @@ export class ImageDocument {
     return new ImageDocument(imageData, {
       width: meta.width,
       height: meta.height,
-      colorDepth: 7,
+      colorDepth: meta.hasMask ? 8 : 7,
       format: 'gb7',
       fileName,
     });
