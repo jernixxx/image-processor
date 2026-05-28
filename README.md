@@ -49,7 +49,7 @@ src/
 
 ## Хостинг
 
-🔗 [Ссылка на хостинг](TODO)
+🔗 [Ссылка на хостинг]([TODO](https://jernixxx.github.io/image-processor/))
 
 ## Технологии
 
