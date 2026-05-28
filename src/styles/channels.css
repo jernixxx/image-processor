@@ -87,3 +87,12 @@
 .channel-item--blue.active .channel-item__label { color: var(--ch-blue); }
 .channel-item--alpha.active .channel-item__label { color: var(--ch-alpha); }
 .channel-item--gray.active .channel-item__label { color: var(--ch-gray); }
+
+/* Crossed-out eye icon style for disabled channels */
+.channel-item.disabled .eye-slash {
+  display: block !important;
+}
+.channel-item.disabled .eye-pupil,
+.channel-item.disabled .eye-open-path {
+  opacity: 0.4;
+}

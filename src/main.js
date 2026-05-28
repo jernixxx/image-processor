@@ -332,8 +332,9 @@ function buildChannelsPanel() {
     item.innerHTML = `
       <span class="channel-item__eye">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-          <circle cx="12" cy="12" r="3"/>
+          <path class="eye-open-path" d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+          <circle class="eye-pupil" cx="12" cy="12" r="3"/>
+          <line class="eye-slash" x1="2" y1="2" x2="22" y2="22" stroke="currentColor" stroke-width="2" style="display: none;"/>
         </svg>
       </span>
       <span class="channel-item__thumb"><canvas width="36" height="36"></canvas></span>
@@ -440,12 +441,10 @@ canvas.addEventListener('click', (e) => {
   // Корректный пересчёт координат с учётом масштаба
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
-  const canvasX = Math.floor((e.clientX - rect.left) * scaleX);
-  const canvasY = Math.floor((e.clientY - rect.top) * scaleY);
 
-  // Координаты относительно изображения
-  const imgX = Math.floor(canvasX / state.zoom);
-  const imgY = Math.floor(canvasY / state.zoom);
+  // Вычисляем координаты относительно изображения с субпиксельной точностью до округления
+  const imgX = Math.floor(((e.clientX - rect.left) * scaleX) / state.zoom);
+  const imgY = Math.floor(((e.clientY - rect.top) * scaleY) / state.zoom);
 
   if (imgX < 0 || imgX >= state.currentData.width || imgY < 0 || imgY >= state.currentData.height) return;
 
@@ -475,10 +474,10 @@ canvas.addEventListener('mousemove', (e) => {
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width / rect.width;
   const scaleY = canvas.height / rect.height;
-  const canvasX = Math.floor((e.clientX - rect.left) * scaleX);
-  const canvasY = Math.floor((e.clientY - rect.top) * scaleY);
-  const imgX = Math.floor(canvasX / state.zoom);
-  const imgY = Math.floor(canvasY / state.zoom);
+
+  // Вычисляем координаты относительно изображения с субпиксельной точностью до округления
+  const imgX = Math.floor(((e.clientX - rect.left) * scaleX) / state.zoom);
+  const imgY = Math.floor(((e.clientY - rect.top) * scaleY) / state.zoom);
   if (imgX >= 0 && imgX < state.currentData.width && imgY >= 0 && imgY < state.currentData.height) {
     els.statusCursor.textContent = `X: ${imgX}  Y: ${imgY}`;
   }
