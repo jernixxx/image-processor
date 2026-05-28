@@ -1155,7 +1155,55 @@ function openFilterDialog() {
   filterBackup = new Uint8ClampedArray(state.currentData.data);
   filterPreset.value = 'identity';
   loadKernelPreset('identity');
+  
+  // Динамически настраиваем чекбоксы каналов под изображение
+  updateFilterChannelsUI();
+
   filterDialog.showModal();
+}
+
+function updateFilterChannelsUI() {
+  const isGB7 = state.doc && state.doc.format === 'gb7';
+  const hasAlphaChan = state.channelCount === 2 || state.channelCount === 4;
+
+  const lblR = $('#filter-ch-r-label');
+  const lblG = $('#filter-ch-g-label');
+  const lblB = $('#filter-ch-b-label');
+  const lblA = $('#filter-ch-a-label');
+
+  const chR = $('#filter-ch-r');
+  const chG = $('#filter-ch-g');
+  const chB = $('#filter-ch-b');
+  const chA = $('#filter-ch-a');
+
+  if (isGB7) {
+    lblR.style.display = 'inline-flex';
+    lblR.querySelector('.filter__ch-text').textContent = 'Серый';
+
+    lblG.style.display = 'none';
+    chG.checked = false;
+
+    lblB.style.display = 'none';
+    chB.checked = false;
+  } else {
+    lblR.style.display = 'inline-flex';
+    lblR.querySelector('.filter__ch-text').textContent = 'R';
+
+    lblG.style.display = 'inline-flex';
+    lblG.querySelector('.filter__ch-text').textContent = 'G';
+    chG.checked = true;
+
+    lblB.style.display = 'inline-flex';
+    lblB.querySelector('.filter__ch-text').textContent = 'B';
+    chB.checked = true;
+  }
+
+  if (hasAlphaChan) {
+    lblA.style.display = 'inline-flex';
+  } else {
+    lblA.style.display = 'none';
+    chA.checked = false;
+  }
 }
 
 function loadKernelPreset(name) {
@@ -1284,11 +1332,15 @@ $('#filter-close').addEventListener('click', () => {
 $('#filter-reset').addEventListener('click', () => {
   filterPreset.value = 'identity';
   loadKernelPreset('identity');
-  state.currentData = new ImageData(
-    new Uint8ClampedArray(filterBackup),
-    state.doc.width, state.doc.height
-  );
-  renderCanvas();
+  if (filterPreview.checked) {
+    applyFilterPreview();
+  } else {
+    state.currentData = new ImageData(
+      new Uint8ClampedArray(filterBackup),
+      state.doc.width, state.doc.height
+    );
+    renderCanvas();
+  }
 });
 
 $('#filter-apply').addEventListener('click', () => {
@@ -1310,6 +1362,12 @@ $('#filter-apply').addEventListener('click', () => {
 });
 
 filterDialog.querySelector('[data-close]').addEventListener('click', () => {
+  $('#filter-close').click();
+});
+
+// Предотвращение закрытия по Escape без сброса превью
+filterDialog.addEventListener('cancel', (e) => {
+  e.preventDefault();
   $('#filter-close').click();
 });
 
