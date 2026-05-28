@@ -513,20 +513,27 @@ canvas.addEventListener('mouseleave', () => {
 // Уровни (Levels)
 // ==========================================
 
+// ==========================================
+// Уровни (Levels)
+// ==========================================
+
 const levelsDialog = $('#levels-dialog');
 const levelsChannel = $('#levels-channel');
 const levelsHistCanvas = $('#levels-histogram');
 const levelsHistCtx = levelsHistCanvas.getContext('2d');
 const levelsBlack = $('#levels-black');
-const levelsBlackSlider = $('#levels-black-slider');
-const levelsWhite = $('#levels-white');
-const levelsWhiteSlider = $('#levels-white-slider');
 const levelsGammaVal = $('#levels-gamma-val');
-const levelsGammaSlider = $('#levels-gamma-slider');
+const levelsWhite = $('#levels-white');
 const levelsLog = $('#levels-log');
 const levelsPreview = $('#levels-preview');
 
+const levelsTrack = $('#levels-track');
+const levelsThumbBlack = $('#levels-thumb-black');
+const levelsThumbGamma = $('#levels-thumb-gamma');
+const levelsThumbWhite = $('#levels-thumb-white');
+
 let levelsHistograms = null;
+let activeThumb = null;
 
 els.btnLevels.addEventListener('click', openLevelsDialog);
 
@@ -536,17 +543,21 @@ function openLevelsDialog() {
   // Сохраняем текущее состояние для отмены
   state.levelsBackup = new Uint8ClampedArray(state.currentData.data);
 
-  // Сбрасываем настройки
-  state.levelsSettings = {
-    master: { black: 0, white: 255, gamma: 1.0 },
-    red:    { black: 0, white: 255, gamma: 1.0 },
-    green:  { black: 0, white: 255, gamma: 1.0 },
-    blue:   { black: 0, white: 255, gamma: 1.0 },
-    alpha:  { black: 0, white: 255, gamma: 1.0 },
-  };
-
   // Считаем гистограммы
   levelsHistograms = calculateAllHistograms(state.currentData);
+
+  // Обновляем список каналов в выпадающем списке под текущее изображение
+  updateLevelsChannelDropdown();
+
+  // Инициализируем настройки
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  state.levelsSettings = {
+    master: { black: 0, white: maxVal, gamma: 1.0 },
+    red:    { black: 0, white: maxVal, gamma: 1.0 },
+    green:  { black: 0, white: maxVal, gamma: 1.0 },
+    blue:   { black: 0, white: maxVal, gamma: 1.0 },
+    alpha:  { black: 0, white: maxVal, gamma: 1.0 },
+  };
 
   levelsChannel.value = 'master';
   loadLevelsChannel('master');
@@ -555,22 +566,76 @@ function openLevelsDialog() {
   levelsDialog.showModal();
 }
 
+function updateLevelsChannelDropdown() {
+  const select = levelsChannel;
+  select.innerHTML = '';
+
+  const isGB7 = state.doc && state.doc.format === 'gb7';
+  const hasAlphaChan = state.channelCount === 2 || state.channelCount === 4;
+
+  if (isGB7) {
+    const masterOpt = document.createElement('option');
+    masterOpt.value = 'master';
+    masterOpt.textContent = 'Яркость (Серый)';
+    select.appendChild(masterOpt);
+
+    if (hasAlphaChan) {
+      const alphaOpt = document.createElement('option');
+      alphaOpt.value = 'alpha';
+      alphaOpt.textContent = 'Альфа';
+      select.appendChild(alphaOpt);
+    }
+  } else {
+    const masterOpt = document.createElement('option');
+    masterOpt.value = 'master';
+    masterOpt.textContent = 'Master (RGB)';
+    select.appendChild(masterOpt);
+
+    const redOpt = document.createElement('option');
+    redOpt.value = 'red';
+    redOpt.textContent = 'Красный';
+    select.appendChild(redOpt);
+
+    const greenOpt = document.createElement('option');
+    greenOpt.value = 'green';
+    greenOpt.textContent = 'Зелёный';
+    select.appendChild(greenOpt);
+
+    const blueOpt = document.createElement('option');
+    blueOpt.value = 'blue';
+    blueOpt.textContent = 'Синий';
+    select.appendChild(blueOpt);
+
+    if (hasAlphaChan) {
+      const alphaOpt = document.createElement('option');
+      alphaOpt.value = 'alpha';
+      alphaOpt.textContent = 'Альфа';
+      select.appendChild(alphaOpt);
+    }
+  }
+}
+
 function loadLevelsChannel(ch) {
   const s = state.levelsSettings[ch];
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+
+  levelsBlack.max = maxVal - 1;
+  levelsWhite.max = maxVal;
+
   levelsBlack.value = s.black;
-  levelsBlackSlider.value = s.black;
   levelsWhite.value = s.white;
-  levelsWhiteSlider.value = s.white;
   levelsGammaVal.value = s.gamma.toFixed(2);
-  levelsGammaSlider.value = Math.round(s.gamma * 100);
+
+  updateThumbPositions();
 }
 
 function saveLevelsChannel() {
   const ch = levelsChannel.value;
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
   state.levelsSettings[ch] = {
-    black: parseInt(levelsBlack.value),
-    white: parseInt(levelsWhite.value),
-    gamma: parseFloat(levelsGammaVal.value),
+    black: parseInt(levelsBlack.value) || 0,
+    white: parseInt(levelsWhite.value) || maxVal,
+    gamma: parseFloat(levelsGammaVal.value) || 1.0,
   };
 }
 
@@ -579,46 +644,140 @@ levelsChannel.addEventListener('change', () => {
   drawHistogram(levelsChannel.value);
 });
 
-// Связка input ↔ slider
-function syncLevelsInputs(inputEl, sliderEl, type) {
-  inputEl.addEventListener('input', () => {
-    sliderEl.value = inputEl.value;
-    constrainLevels();
-    saveLevelsChannel();
-    applyLevelsPreview();
-  });
-  sliderEl.addEventListener('input', () => {
-    if (type === 'gamma') {
-      inputEl.value = (parseInt(sliderEl.value) / 100).toFixed(2);
-    } else {
-      inputEl.value = sliderEl.value;
-    }
-    constrainLevels();
-    saveLevelsChannel();
-    applyLevelsPreview();
-  });
-}
+// Обработчики ввода для числовых полей с авто-ограничениями
+levelsBlack.addEventListener('input', () => {
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  let val = parseInt(levelsBlack.value);
+  if (isNaN(val)) val = 0;
+  val = Math.max(0, Math.min(val, maxVal - 1));
+  levelsBlack.value = val;
 
-syncLevelsInputs(levelsBlack, levelsBlackSlider, 'black');
-syncLevelsInputs(levelsWhite, levelsWhiteSlider, 'white');
-syncLevelsInputs(levelsGammaVal, levelsGammaSlider, 'gamma');
+  constrainLevels();
+  saveLevelsChannel();
+  updateThumbPositions();
+  applyLevelsPreview();
+});
+
+levelsWhite.addEventListener('input', () => {
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  let val = parseInt(levelsWhite.value);
+  if (isNaN(val)) val = maxVal;
+  val = Math.max(1, Math.min(val, maxVal));
+  levelsWhite.value = val;
+
+  constrainLevels();
+  saveLevelsChannel();
+  updateThumbPositions();
+  applyLevelsPreview();
+});
+
+levelsGammaVal.addEventListener('input', () => {
+  let val = parseFloat(levelsGammaVal.value);
+  if (isNaN(val)) val = 1.0;
+  val = Math.max(0.1, Math.min(val, 9.9));
+  levelsGammaVal.value = val.toFixed(2);
+
+  saveLevelsChannel();
+  updateThumbPositions();
+  applyLevelsPreview();
+});
 
 function constrainLevels() {
-  let b = parseInt(levelsBlack.value);
-  let w = parseInt(levelsWhite.value);
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  let b = parseInt(levelsBlack.value) || 0;
+  let w = parseInt(levelsWhite.value) || maxVal;
   if (b >= w) {
-    if (document.activeElement === levelsBlack || document.activeElement === levelsBlackSlider) {
-      b = Math.min(b, 254);
+    if (document.activeElement === levelsBlack) {
+      b = Math.min(b, maxVal - 1);
       w = b + 1;
       levelsWhite.value = w;
-      levelsWhiteSlider.value = w;
     } else {
       w = Math.max(w, 1);
       b = w - 1;
       levelsBlack.value = b;
-      levelsBlackSlider.value = b;
     }
   }
+}
+
+// Кастомное перетаскивание на Pointer Events
+function setupDragAndDrop() {
+  function handlePointerDown(e, thumbType) {
+    e.preventDefault();
+    activeThumb = thumbType;
+    levelsTrack.setPointerCapture(e.pointerId);
+  }
+
+  levelsThumbBlack.addEventListener('pointerdown', (e) => handlePointerDown(e, 'black'));
+  levelsThumbGamma.addEventListener('pointerdown', (e) => handlePointerDown(e, 'gamma'));
+  levelsThumbWhite.addEventListener('pointerdown', (e) => handlePointerDown(e, 'white'));
+
+  levelsTrack.addEventListener('pointermove', (e) => {
+    if (!activeThumb) return;
+    e.preventDefault();
+
+    const rect = levelsTrack.getBoundingClientRect();
+    let pct = ((e.clientX - rect.left) / rect.width) * 100;
+    pct = Math.max(0, Math.min(pct, 100));
+
+    const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+
+    if (activeThumb === 'black') {
+      let val = Math.round((pct / 100) * maxVal);
+      const w = parseInt(levelsWhite.value) || maxVal;
+      if (val >= w) val = w - 1;
+      levelsBlack.value = val;
+    } else if (activeThumb === 'white') {
+      let val = Math.round((pct / 100) * maxVal);
+      const b = parseInt(levelsBlack.value) || 0;
+      if (val <= b) val = b + 1;
+      levelsWhite.value = val;
+    } else if (activeThumb === 'gamma') {
+      let val = (pct / 100) * maxVal;
+      const b = parseInt(levelsBlack.value) || 0;
+      const w = parseInt(levelsWhite.value) || maxVal;
+      val = Math.max(b + 0.01, Math.min(val, w - 0.01));
+      const p = (val - b) / (w - b);
+      let gamma = Math.pow(10, (0.5 - p) * 2);
+      gamma = Math.max(0.1, Math.min(gamma, 9.9));
+      levelsGammaVal.value = gamma.toFixed(2);
+    }
+
+    constrainLevels();
+    saveLevelsChannel();
+    updateThumbPositions();
+    applyLevelsPreview();
+  });
+
+  const handlePointerUp = (e) => {
+    if (activeThumb) {
+      levelsTrack.releasePointerCapture(e.pointerId);
+      activeThumb = null;
+    }
+  };
+
+  levelsTrack.addEventListener('pointerup', handlePointerUp);
+  levelsTrack.addEventListener('pointercancel', handlePointerUp);
+}
+
+setupDragAndDrop();
+
+function updateThumbPositions() {
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  const b = parseInt(levelsBlack.value) || 0;
+  const w = parseInt(levelsWhite.value) || maxVal;
+  const gamma = parseFloat(levelsGammaVal.value) || 1.0;
+
+  // Положение гаммы в диапазоне [0, 1] относительно B и W
+  const p = 0.5 - Math.log10(gamma) / 2;
+  const m = b + p * (w - b);
+
+  const pctB = (b / maxVal) * 100;
+  const pctM = (m / maxVal) * 100;
+  const pctW = (w / maxVal) * 100;
+
+  levelsThumbBlack.style.left = `${pctB}%`;
+  levelsThumbGamma.style.left = `${pctM}%`;
+  levelsThumbWhite.style.left = `${pctW}%`;
 }
 
 levelsLog.addEventListener('change', () => drawHistogram(levelsChannel.value));
@@ -653,11 +812,21 @@ function applyLevelsPreview() {
 
 function buildLUTs() {
   const s = state.levelsSettings;
-  const masterLUT = generateLUT(s.master.black, s.master.white, s.master.gamma);
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  const scale = 255 / maxVal;
 
-  // Для каждого канала: сначала master, потом канальный
+  const scaleSet = (set) => ({
+    black: set.black * scale,
+    white: set.white * scale,
+    gamma: set.gamma
+  });
+
+  const masterScaled = scaleSet(s.master);
+  const masterLUT = generateLUT(masterScaled.black, masterScaled.white, masterScaled.gamma);
+
   function combineLUT(channelSettings) {
-    const chLUT = generateLUT(channelSettings.black, channelSettings.white, channelSettings.gamma);
+    const chScaled = scaleSet(channelSettings);
+    const chLUT = generateLUT(chScaled.black, chScaled.white, chScaled.gamma);
     const combined = new Uint8ClampedArray(256);
     for (let i = 0; i < 256; i++) {
       combined[i] = chLUT[masterLUT[i]];
@@ -665,11 +834,14 @@ function buildLUTs() {
     return combined;
   }
 
+  const alphaScaled = scaleSet(s.alpha);
+  const alphaLUT = generateLUT(alphaScaled.black, alphaScaled.white, alphaScaled.gamma);
+
   return {
     r: combineLUT(s.red),
     g: combineLUT(s.green),
     b: combineLUT(s.blue),
-    a: combineLUT(s.alpha),
+    a: alphaLUT, // Alpha-канал полностью независим от Master
   };
 }
 
@@ -698,9 +870,20 @@ function drawHistogram(channel) {
     color = '#9399b2';
   }
 
+  const isGB7 = state.doc && state.doc.format === 'gb7';
+  const bins = isGB7 ? 128 : 256;
+  let displayData = data;
+
+  if (isGB7) {
+    displayData = new Uint32Array(128);
+    for (let i = 0; i < 128; i++) {
+      displayData[i] = data[2 * i] + data[2 * i + 1];
+    }
+  }
+
   let maxVal = 0;
-  for (let i = 0; i < data.length; i++) {
-    if (data[i] > maxVal) maxVal = data[i];
+  for (let i = 0; i < displayData.length; i++) {
+    if (displayData[i] > maxVal) maxVal = displayData[i];
   }
   if (maxVal === 0) return;
 
@@ -709,16 +892,16 @@ function drawHistogram(channel) {
   levelsHistCtx.fillStyle = color;
   levelsHistCtx.globalAlpha = 0.7;
 
-  for (let i = 0; i < 256; i++) {
-    const val = data[i];
+  for (let i = 0; i < bins; i++) {
+    const val = displayData[i];
     let barH;
     if (useLog) {
       barH = val > 0 ? (Math.log(val + 1) / Math.log(maxVal + 1)) * h : 0;
     } else {
       barH = (val / maxVal) * h;
     }
-    const x = (i / 256) * w;
-    const barW = Math.max(w / 256, 1);
+    const x = (i / bins) * w;
+    const barW = Math.max(w / bins, 1);
     levelsHistCtx.fillRect(x, h - barH, barW, barH);
   }
 
@@ -727,7 +910,8 @@ function drawHistogram(channel) {
 
 $('#levels-reset').addEventListener('click', () => {
   const ch = levelsChannel.value;
-  state.levelsSettings[ch] = { black: 0, white: 255, gamma: 1.0 };
+  const maxVal = state.doc && state.doc.format === 'gb7' ? 127 : 255;
+  state.levelsSettings[ch] = { black: 0, white: maxVal, gamma: 1.0 };
   loadLevelsChannel(ch);
   applyLevelsPreview();
 });
@@ -762,6 +946,12 @@ $('#levels-apply').addEventListener('click', () => {
 
 // Закрытие диалога по кнопке ×
 levelsDialog.querySelector('[data-close]').addEventListener('click', () => {
+  $('#levels-cancel').click();
+});
+
+// Предотвращение некорректного закрытия по Escape
+levelsDialog.addEventListener('cancel', (e) => {
+  e.preventDefault();
   $('#levels-cancel').click();
 });
 

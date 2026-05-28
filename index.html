@@ -174,17 +174,21 @@
           </label>
         </div>
         <div class="levels__histogram-container">
-          <canvas id="levels-histogram" width="256" height="128"></canvas>
+          <div class="levels__hist-wrapper">
+            <canvas id="levels-histogram" width="256" height="128"></canvas>
+            <div id="levels-track" class="levels__track">
+              <div id="levels-thumb-black" class="levels__thumb levels__thumb--black" title="Точка черного"></div>
+              <div id="levels-thumb-gamma" class="levels__thumb levels__thumb--gamma" title="Гамма / Полутона"></div>
+              <div id="levels-thumb-white" class="levels__thumb levels__thumb--white" title="Точка белого"></div>
+            </div>
+          </div>
         </div>
-        <div class="levels__sliders">
-          <label>Входные уровни:</label>
-          <div class="levels__slider-row">
+        <div class="levels__inputs-container">
+          <label>Входные уровни (Тень / Средние / Свет):</label>
+          <div class="levels__inputs-row">
             <input type="number" id="levels-black" class="levels__input" value="0" min="0" max="254" />
-            <input type="range" id="levels-black-slider" min="0" max="254" value="0" class="levels__range levels__range--black" />
             <input type="number" id="levels-gamma-val" class="levels__input levels__input--gamma" value="1.00" min="0.10" max="9.99" step="0.01" />
-            <input type="range" id="levels-gamma-slider" min="10" max="990" value="100" class="levels__range levels__range--gamma" />
             <input type="number" id="levels-white" class="levels__input" value="255" min="1" max="255" />
-            <input type="range" id="levels-white-slider" min="1" max="255" value="255" class="levels__range levels__range--white" />
           </div>
         </div>
         <div class="levels__preview-row">
