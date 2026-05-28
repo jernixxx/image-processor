@@ -558,6 +558,7 @@ function openLevelsDialog() {
   loadLevelsChannel('master');
   drawHistogram('master');
 
+  resetDialogPosition(levelsDialog);
   levelsDialog.showModal();
 }
 
@@ -988,6 +989,7 @@ function openResizeDialog() {
 
   updateResizeTooltip();
   validateResizeInputs();
+  resetDialogPosition(resizeDialog);
   resizeDialog.showModal();
 }
 
@@ -1159,6 +1161,7 @@ function openFilterDialog() {
   // Динамически настраиваем чекбоксы каналов под изображение
   updateFilterChannelsUI();
 
+  resetDialogPosition(filterDialog);
   filterDialog.showModal();
 }
 
@@ -1398,6 +1401,91 @@ document.addEventListener('keydown', (e) => {
     if (!els.btnSave.disabled) els.btnSave.click();
   }
 });
+
+// ==========================================
+// Перемещение диалоговых окон (Draggable Dialogs)
+// ==========================================
+
+function resetDialogPosition(dialog) {
+  dialog.style.margin = '';
+  dialog.style.left = '';
+  dialog.style.top = '';
+  dialog.style.right = '';
+  dialog.style.bottom = '';
+}
+
+function makeDraggable(dialog) {
+  const header = dialog.querySelector('.dialog__header');
+  if (!header) return;
+
+  header.style.cursor = 'move';
+  header.style.userSelect = 'none';
+
+  let isDragging = false;
+  let startX = 0;
+  let startY = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  header.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    if (e.target.closest('button') || e.target.closest('input') || e.target.closest('select')) {
+      return;
+    }
+
+    isDragging = true;
+    header.setPointerCapture(e.pointerId);
+
+    const rect = dialog.getBoundingClientRect();
+    startLeft = rect.left;
+    startTop = rect.top;
+
+    dialog.style.margin = '0';
+    dialog.style.right = 'auto';
+    dialog.style.bottom = 'auto';
+    dialog.style.left = `${startLeft}px`;
+    dialog.style.top = `${startTop}px`;
+
+    startX = e.clientX;
+    startY = e.clientY;
+  });
+
+  header.addEventListener('pointermove', (e) => {
+    if (!isDragging) return;
+
+    const dx = e.clientX - startX;
+    const dy = e.clientY - startY;
+
+    let left = startLeft + dx;
+    let top = startTop + dy;
+
+    const rect = dialog.getBoundingClientRect();
+    const minLeft = 0;
+    const maxLeft = window.innerWidth - rect.width;
+    const minTop = 0;
+    const maxTop = window.innerHeight - rect.height;
+
+    left = Math.max(minLeft, Math.min(left, maxLeft));
+    top = Math.max(minTop, Math.min(top, maxTop));
+
+    dialog.style.left = `${left}px`;
+    dialog.style.top = `${top}px`;
+  });
+
+  const stopDragging = (e) => {
+    if (!isDragging) return;
+    isDragging = false;
+    header.releasePointerCapture(e.pointerId);
+  };
+
+  header.addEventListener('pointerup', stopDragging);
+  header.addEventListener('pointercancel', stopDragging);
+}
+
+// Инициализация перемещения для всех диалоговых окон
+makeDraggable(levelsDialog);
+makeDraggable(resizeDialog);
+makeDraggable(filterDialog);
 
 // ==========================================
 // Инициализация
