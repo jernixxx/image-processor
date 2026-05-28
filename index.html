@@ -8,8 +8,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <script type="module" crossorigin src="./assets/index-D399Kzus.js"></script>
-  <link rel="stylesheet" crossorigin href="./assets/index-V_fQCl5F.css">
+  <script type="module" crossorigin src="./assets/index-D0SGbFsb.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-BbpG8nip.css">
 </head>
 <body>
   <div id="app">
@@ -224,13 +224,15 @@
             <label for="resize-width">Ширина:</label>
             <input type="number" id="resize-width" class="resize__input" value="100" min="1" />
           </div>
-          <button id="resize-link" class="resize__link-btn resize__link-btn--active" title="Сохранять пропорции">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg>
-          </button>
           <div class="resize__field">
             <label for="resize-height">Высота:</label>
             <input type="number" id="resize-height" class="resize__input" value="100" min="1" />
           </div>
+        </div>
+        <div class="resize__lock-row">
+          <label class="resize__lock-label">
+            <input type="checkbox" id="resize-link-checkbox" checked /> Сохранять пропорции
+          </label>
         </div>
         <div class="resize__method-select">
           <label for="resize-method">Интерполяция:</label>
