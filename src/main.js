@@ -98,7 +98,9 @@ canvasArea.addEventListener('drop', (e) => {
 });
 
 async function loadFile(file) {
+  showLoading(true);
   try {
+    console.log('Loading file:', file.name, 'size:', file.size, 'type:', file.type);
     const doc = await ImageDocument.fromFile(file);
     state.doc = doc;
     state.currentData = doc.getImageData();
@@ -110,6 +112,7 @@ async function loadFile(file) {
     } else {
       state.channelCount = hasAlpha(state.currentData) ? 4 : 3;
     }
+    console.log('Loaded document info:', { format: doc.format, channels: state.channelCount, width: doc.width, height: doc.height, colorDepth: doc.colorDepth });
 
     // Обновляем UI
     enableControls(true);
@@ -130,9 +133,12 @@ async function loadFile(file) {
 
     els.emptyState.style.display = 'none';
     canvas.classList.add('active');
+    console.log('File loaded successfully and UI updated.');
   } catch (err) {
-    console.error('Ошибка загрузки:', err);
-    alert('Ошибка загрузки файла: ' + err.message);
+    console.error('Ошибка загрузки файла:', err);
+    alert('Ошибка загрузки файла: ' + err.message + '\n' + (err.stack || ''));
+  } finally {
+    showLoading(false);
   }
 }
 
@@ -145,18 +151,31 @@ function hasAlpha(imageData) {
   return false;
 }
 
+/** Показывает или скрывает индикатор загрузки */
+function showLoading(show) {
+  const overlay = $('#loading-overlay');
+  if (overlay) {
+    overlay.style.display = show ? 'flex' : 'none';
+  }
+}
+
 /** Загружает тестовое изображение из папки test-images */
 async function loadTestImage(presetName) {
+  showLoading(true);
   try {
     const path = `./test-images/${presetName}`;
+    console.log('Fetching test image preset:', path);
     const response = await fetch(path);
-    if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status}`);
+    if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status} ${response.statusText}`);
     const blob = await response.blob();
+    console.log('Fetched preset blob:', { size: blob.size, type: blob.type });
     const file = new File([blob], presetName, { type: blob.type || 'application/octet-stream' });
     await loadFile(file);
   } catch (err) {
     console.error('Ошибка загрузки пресета:', err);
-    alert('Не удалось загрузить тестовое изображение: ' + err.message);
+    alert('Не удалось загрузить тестовое изображение: ' + err.message + '\n' + (err.stack || ''));
+  } finally {
+    showLoading(false);
   }
 }
 
@@ -465,7 +484,10 @@ canvas.addEventListener('click', (e) => {
   $('#eyedropper-lab-l').textContent = lab.L.toFixed(2);
   $('#eyedropper-lab-a').textContent = lab.a.toFixed(2);
   $('#eyedropper-lab-b').textContent = lab.b.toFixed(2);
-  $('#eyedropper-color-preview').style.background = `rgba(${r},${g},${b},${a / 255})`;
+
+  // Учитываем отключение альфа-канала в UI при предпросмотре цвета
+  const displayAlpha = state.channels.a ? (a / 255) : 1;
+  $('#eyedropper-color-preview').style.background = `rgba(${r},${g},${b},${displayAlpha})`;
 });
 
 // Показываем координаты курсора на canvas
