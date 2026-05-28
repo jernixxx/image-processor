@@ -114,6 +114,12 @@ async function loadFile(file) {
     // Обновляем UI
     enableControls(true);
     updateStatusBar();
+
+    const rightPanel = $('#right-panel');
+    if (rightPanel) {
+      rightPanel.classList.remove('panel--collapsed');
+    }
+
     buildChannelsPanel();
     fitToScreen();
     renderCanvas();
@@ -137,6 +143,21 @@ function hasAlpha(imageData) {
     if (d[i] < 255) return true;
   }
   return false;
+}
+
+/** Загружает тестовое изображение из папки test-images */
+async function loadTestImage(presetName) {
+  try {
+    const path = `./test-images/${presetName}`;
+    const response = await fetch(path);
+    if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status}`);
+    const blob = await response.blob();
+    const file = new File([blob], presetName, { type: blob.type || 'application/octet-stream' });
+    await loadFile(file);
+  } catch (err) {
+    console.error('Ошибка загрузки пресета:', err);
+    alert('Не удалось загрузить тестовое изображение: ' + err.message);
+  }
 }
 
 els.btnSave.addEventListener('click', async () => {
@@ -275,6 +296,15 @@ els.zoomSelect.addEventListener('change', () => {
   renderCanvas();
 });
 
+// Слушатель для авто-масштабирования при изменении размеров окна (viewport)
+window.addEventListener('resize', () => {
+  if (!state.doc) return;
+  if (els.zoomSelect.value === 'fit') {
+    fitToScreen();
+    renderCanvas();
+  }
+});
+
 // ==========================================
 // Статусная строка
 // ==========================================
@@ -389,6 +419,19 @@ els.btnEyedropper.addEventListener('click', () => {
   els.btnEyedropper.classList.toggle('active', state.eyedropperActive);
   canvas.classList.toggle('eyedropper-active', state.eyedropperActive);
   els.eyedropperInfo.style.display = state.eyedropperActive ? 'block' : 'none';
+
+  const leftPanel = $('#left-panel');
+  if (leftPanel) {
+    leftPanel.classList.toggle('panel--collapsed', !state.eyedropperActive);
+    
+    // Пересчитываем масштаб после окончания CSS transition (200ms)
+    setTimeout(() => {
+      if (els.zoomSelect.value === 'fit') {
+        fitToScreen();
+        renderCanvas();
+      }
+    }, 210);
+  }
 });
 
 canvas.addEventListener('click', (e) => {
@@ -1059,4 +1102,16 @@ document.addEventListener('keydown', (e) => {
 // ==========================================
 
 enableControls(false);
+
+// Инициализация обработчиков кнопок тестовых пресетов
+document.querySelectorAll('.empty-state__preset-btn').forEach(btn => {
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const preset = btn.dataset.preset;
+    if (preset) {
+      loadTestImage(preset);
+    }
+  });
+});
+
 console.log('Image Processor загружен');

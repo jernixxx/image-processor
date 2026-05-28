@@ -224,3 +224,82 @@
   pointer-events: none;
   animation: fadeIn 0.2s ease;
 }
+
+/* Collapsible side panels */
+.panel.panel--collapsed {
+  width: 0;
+  min-width: 0;
+  border-left: none;
+  border-right: none;
+  overflow: hidden;
+}
+
+/* Preset buttons in empty state */
+.empty-state__presets {
+  margin-top: var(--space-xl);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+.empty-state__presets-title {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.empty-state__presets-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  justify-content: center;
+  margin-top: var(--space-sm);
+}
+
+.empty-state__preset-btn {
+  padding: var(--space-sm) var(--space-lg);
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.empty-state__preset-btn:hover {
+  background: var(--bg-surface-hover);
+  color: var(--text-primary);
+  border-color: var(--border-focus);
+}
+
+/* Responsive layout adjustments */
+@media (max-width: 768px) {
+  .toolbar__btn span {
+    display: none;
+  }
+  .toolbar__btn {
+    padding: var(--space-sm);
+    justify-content: center;
+  }
+  
+  .panel {
+    position: absolute;
+    top: var(--toolbar-height);
+    bottom: var(--statusbar-height);
+    z-index: 150;
+    height: calc(100vh - var(--toolbar-height) - var(--statusbar-height));
+    box-shadow: var(--shadow-lg);
+  }
+  
+  .panel--left {
+    left: 0;
+    border-right: 1px solid var(--border-color);
+  }
+  
+  .panel--right {
+    right: 0;
+    border-left: 1px solid var(--border-color);
+  }
+}
