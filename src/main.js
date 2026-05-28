@@ -213,23 +213,18 @@ function renderCanvas() {
   // Применяем маску каналов
   const displayed = applyChannelMask(src, state.channels, state.channelCount);
 
-  // Масштабируем через браузерный drawImage (быстро, GPU-ускорение)
+  // Масштабируем через нашу собственную билинейную интерполяцию (быстро оптимизированную)
   const dstW = Math.round(srcW * state.zoom);
   const dstH = Math.round(srcH * state.zoom);
 
   if (dstW < 1 || dstH < 1) return;
 
-  // Создаём offscreen-canvas с исходным размером для putImageData
-  const offscreen = document.createElement('canvas');
-  offscreen.width = srcW;
-  offscreen.height = srcH;
-  offscreen.getContext('2d').putImageData(displayed, 0, 0);
+  const resized = resizeImage(displayed, dstW, dstH, INTERPOLATION_METHODS.BILINEAR);
 
-  // Рисуем с масштабированием на основной canvas
+  // Рисуем на основной canvas
   canvas.width = dstW;
   canvas.height = dstH;
-  ctx.imageSmoothingEnabled = state.zoom < 1;
-  ctx.drawImage(offscreen, 0, 0, dstW, dstH);
+  ctx.putImageData(resized, 0, 0);
 }
 
 function applyChannelMask(imageData, channels, channelCount) {
@@ -963,7 +958,7 @@ const resizeDialog = $('#resize-dialog');
 const resizeWidth = $('#resize-width');
 const resizeHeight = $('#resize-height');
 const resizeUnit = $('#resize-unit');
-const resizeLinkBtn = $('#resize-link');
+const resizeLinkCheckbox = $('#resize-link-checkbox');
 const resizeMethod = $('#resize-method');
 const resizeTooltip = $('#resize-method-tooltip');
 const resizeCurrentMp = $('#resize-current-mp');
@@ -974,27 +969,27 @@ els.btnResize.addEventListener('click', openResizeDialog);
 function openResizeDialog() {
   if (!state.doc) return;
   state.aspectRatio = state.doc.width / state.doc.height;
-  state.resizeLinked = true;
-  resizeLinkBtn.classList.add('resize__link-btn--active');
+  
+  resizeLinkCheckbox.checked = true;
 
   resizeUnit.value = 'percent';
   resizeWidth.value = 100;
   resizeHeight.value = 100;
+  
+  // Устанавливаем min/max лимиты по умолчанию
   resizeWidth.min = 1;
   resizeHeight.min = 1;
+  resizeWidth.max = 3000; // До 3000%
+  resizeHeight.max = 3000;
 
   const mp = (state.doc.width * state.doc.height) / 1e6;
   resizeCurrentMp.textContent = mp.toFixed(2);
   resizeNewMp.textContent = mp.toFixed(2);
 
   updateResizeTooltip();
+  validateResizeInputs();
   resizeDialog.showModal();
 }
-
-resizeLinkBtn.addEventListener('click', () => {
-  state.resizeLinked = !state.resizeLinked;
-  resizeLinkBtn.classList.toggle('resize__link-btn--active', state.resizeLinked);
-});
 
 resizeUnit.addEventListener('change', () => {
   if (resizeUnit.value === 'pixels') {
@@ -1002,25 +997,27 @@ resizeUnit.addEventListener('change', () => {
     resizeHeight.value = state.doc.height;
     resizeWidth.min = 1;
     resizeHeight.min = 1;
-    resizeWidth.max = state.doc.width * 3;
-    resizeHeight.max = state.doc.height * 3;
+    resizeWidth.max = 10000; // До 10000 пикселей
+    resizeHeight.max = 10000;
   } else {
     resizeWidth.value = 100;
     resizeHeight.value = 100;
     resizeWidth.min = 1;
     resizeHeight.min = 1;
-    resizeWidth.max = 300;
-    resizeHeight.max = 300;
+    resizeWidth.max = 3000; // До 3000%
+    resizeHeight.max = 3000;
   }
+  validateResizeInputs();
   updateResizeNewMp();
 });
 
 resizeWidth.addEventListener('input', () => {
-  if (state.resizeLinked) {
+  const val = parseInt(resizeWidth.value);
+  if (resizeLinkCheckbox.checked && !isNaN(val)) {
     if (resizeUnit.value === 'percent') {
-      resizeHeight.value = resizeWidth.value;
+      resizeHeight.value = val;
     } else {
-      resizeHeight.value = Math.round(parseInt(resizeWidth.value) / state.aspectRatio);
+      resizeHeight.value = Math.round(val / state.aspectRatio);
     }
   }
   validateResizeInputs();
@@ -1028,33 +1025,66 @@ resizeWidth.addEventListener('input', () => {
 });
 
 resizeHeight.addEventListener('input', () => {
-  if (state.resizeLinked) {
+  const val = parseInt(resizeHeight.value);
+  if (resizeLinkCheckbox.checked && !isNaN(val)) {
     if (resizeUnit.value === 'percent') {
-      resizeWidth.value = resizeHeight.value;
+      resizeWidth.value = val;
     } else {
-      resizeWidth.value = Math.round(parseInt(resizeHeight.value) * state.aspectRatio);
+      resizeWidth.value = Math.round(val * state.aspectRatio);
     }
   }
   validateResizeInputs();
   updateResizeNewMp();
 });
 
+// Слушаем также изменение состояния чекбокса пропорций, чтобы обновить связь при включении
+resizeLinkCheckbox.addEventListener('change', () => {
+  if (resizeLinkCheckbox.checked) {
+    const val = parseInt(resizeWidth.value);
+    if (!isNaN(val)) {
+      if (resizeUnit.value === 'percent') {
+        resizeHeight.value = val;
+      } else {
+        resizeHeight.value = Math.round(val / state.aspectRatio);
+      }
+    }
+    validateResizeInputs();
+    updateResizeNewMp();
+  }
+});
+
 function validateResizeInputs() {
-  [resizeWidth, resizeHeight].forEach((input) => {
-    const val = parseInt(input.value);
-    const isValid = !isNaN(val) && val >= parseInt(input.min) && val <= parseInt(input.max || 99999);
-    input.classList.toggle('invalid', !isValid);
-  });
+  const isPercent = resizeUnit.value === 'percent';
+  const maxVal = isPercent ? 3000 : 10000;
+
+  const w = parseInt(resizeWidth.value);
+  const h = parseInt(resizeHeight.value);
+
+  const wValid = !isNaN(w) && w >= 1 && w <= maxVal;
+  const hValid = !isNaN(h) && h >= 1 && h <= maxVal;
+
+  resizeWidth.classList.toggle('invalid', !wValid);
+  resizeHeight.classList.toggle('invalid', !hValid);
+
+  $('#resize-apply').disabled = !wValid || !hValid;
 }
 
 function updateResizeNewMp() {
   let newW, newH;
+  const w = parseInt(resizeWidth.value);
+  const h = parseInt(resizeHeight.value);
+  
+  if (isNaN(w) || isNaN(h) || w < 1 || h < 1) {
+    resizeNewMp.textContent = '0.00';
+    return;
+  }
+
   if (resizeUnit.value === 'percent') {
-    newW = Math.round(state.doc.width * parseInt(resizeWidth.value || 100) / 100);
-    newH = Math.round(state.doc.height * parseInt(resizeHeight.value || 100) / 100);
+    newW = Math.round((state.doc.width * w) / 100);
+    newH = Math.round((state.doc.height * h) / 100);
   } else {
-    newW = parseInt(resizeWidth.value) || state.doc.width;
-    newH = parseInt(resizeHeight.value) || state.doc.height;
+    newW = w;
+    newH = h;
   }
   resizeNewMp.textContent = ((newW * newH) / 1e6).toFixed(2);
 }
@@ -1072,17 +1102,20 @@ resizeDialog.querySelector('[data-close]').addEventListener('click', () => resiz
 $('#resize-apply').addEventListener('click', () => {
   if (!state.doc) return;
 
+  const w = parseInt(resizeWidth.value);
+  const h = parseInt(resizeHeight.value);
+
   let newW, newH;
   if (resizeUnit.value === 'percent') {
-    newW = Math.round(state.doc.width * parseInt(resizeWidth.value) / 100);
-    newH = Math.round(state.doc.height * parseInt(resizeHeight.value) / 100);
+    newW = Math.round((state.doc.width * w) / 100);
+    newH = Math.round((state.doc.height * h) / 100);
   } else {
-    newW = parseInt(resizeWidth.value);
-    newH = parseInt(resizeHeight.value);
+    newW = w;
+    newH = h;
   }
 
-  if (newW < 1 || newH < 1 || newW > 20000 || newH > 20000) {
-    alert('Недопустимые размеры');
+  if (newW < 1 || newH < 1 || newW > 10000 || newH > 10000) {
+    alert('Недопустимые размеры. Ширина и высота должны быть от 1 до 10000 пикселей.');
     return;
   }
 

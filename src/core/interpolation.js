@@ -50,36 +50,21 @@ export function resizeImage(
       throw new Error(`Неизвестный метод интерполяции: "${method}"`);
   }
 }
-
-/**
- * Ресайз методом ближайшего соседа.
- *
- * Для каждого пикселя назначения (dx, dy) вычисляется ближайший
- * исходный пиксель:
- *   src_x = floor(dx * srcW / dstW)
- *   src_y = floor(dy * srcH / dstH)
- *
- * @param {Uint8ClampedArray} srcData — массив RGBA исходного изображения.
- * @param {number} srcW — ширина исходного изображения.
- * @param {number} srcH — высота исходного изображения.
- * @param {number} dstW — целевая ширина.
- * @param {number} dstH — целевая высота.
- * @returns {ImageData} Результат.
- */
 function nearestNeighbor(srcData, srcW, srcH, dstW, dstH) {
   const dst = new Uint8ClampedArray(dstW * dstH * 4);
 
   for (let dy = 0; dy < dstH; dy++) {
     const srcY = Math.floor(dy * srcH / dstH);
-    // Гарантируем, что не выходим за границы
     const sy = Math.min(srcY, srcH - 1);
+    const sy_offset = sy * srcW * 4;
+    const dstY_offset = dy * dstW * 4;
 
     for (let dx = 0; dx < dstW; dx++) {
       const srcX = Math.floor(dx * srcW / dstW);
       const sx = Math.min(srcX, srcW - 1);
 
-      const srcIdx = (sy * srcW + sx) * 4;
-      const dstIdx = (dy * dstW + dx) * 4;
+      const srcIdx = sy_offset + sx * 4;
+      const dstIdx = dstY_offset + dx * 4;
 
       dst[dstIdx]     = srcData[srcIdx];
       dst[dstIdx + 1] = srcData[srcIdx + 1];
@@ -91,29 +76,8 @@ function nearestNeighbor(srcData, srcW, srcH, dstW, dstH) {
   return new ImageData(dst, dstW, dstH);
 }
 
-/**
- * Ресайз методом билинейной интерполяции.
- *
- * Для каждого пикселя назначения (dx, dy) вычисляются непрерывные
- * координаты в исходном изображении:
- *   src_x = dx * (srcW - 1) / (dstW - 1)   (при dstW > 1)
- *   src_y = dy * (srcH - 1) / (dstH - 1)   (при dstH > 1)
- *
- * Затем берутся 4 ближайших пикселя и выполняется билинейная
- * интерполяция по дробным частям координат для каждого канала RGBA.
- *
- * @param {Uint8ClampedArray} srcData — массив RGBA исходного изображения.
- * @param {number} srcW — ширина исходного изображения.
- * @param {number} srcH — высота исходного изображения.
- * @param {number} dstW — целевая ширина.
- * @param {number} dstH — целевая высота.
- * @returns {ImageData} Результат.
- */
 function bilinear(srcData, srcW, srcH, dstW, dstH) {
   const dst = new Uint8ClampedArray(dstW * dstH * 4);
-
-  // Масштабные коэффициенты.
-  // Если dstW или dstH равны 1, избегаем деления на 0.
   const xRatio = dstW > 1 ? (srcW - 1) / (dstW - 1) : 0;
   const yRatio = dstH > 1 ? (srcH - 1) / (dstH - 1) : 0;
 
@@ -122,36 +86,35 @@ function bilinear(srcData, srcW, srcH, dstW, dstH) {
     const y0 = Math.floor(srcYf);
     const y1 = Math.min(y0 + 1, srcH - 1);
     const yFrac = srcYf - y0;
+    const yFrac1 = 1 - yFrac;
+
+    const y0_offset = y0 * srcW * 4;
+    const y1_offset = y1 * srcW * 4;
+    const dstY_offset = dy * dstW * 4;
 
     for (let dx = 0; dx < dstW; dx++) {
       const srcXf = dx * xRatio;
       const x0 = Math.floor(srcXf);
       const x1 = Math.min(x0 + 1, srcW - 1);
       const xFrac = srcXf - x0;
+      const xFrac1 = 1 - xFrac;
 
-      // Индексы четырёх соседних пикселей
-      const idx00 = (y0 * srcW + x0) * 4;
-      const idx10 = (y0 * srcW + x1) * 4;
-      const idx01 = (y1 * srcW + x0) * 4;
-      const idx11 = (y1 * srcW + x1) * 4;
-
-      const dstIdx = (dy * dstW + dx) * 4;
-
-      // Весовые коэффициенты
-      const w00 = (1 - xFrac) * (1 - yFrac);
-      const w10 = xFrac * (1 - yFrac);
-      const w01 = (1 - xFrac) * yFrac;
+      const w00 = xFrac1 * yFrac1;
+      const w10 = xFrac * yFrac1;
+      const w01 = xFrac1 * yFrac;
       const w11 = xFrac * yFrac;
 
-      // Интерполяция по каждому каналу RGBA
-      for (let c = 0; c < 4; c++) {
-        dst[dstIdx + c] = Math.round(
-          srcData[idx00 + c] * w00 +
-          srcData[idx10 + c] * w10 +
-          srcData[idx01 + c] * w01 +
-          srcData[idx11 + c] * w11
-        );
-      }
+      const idx00 = y0_offset + x0 * 4;
+      const idx10 = y0_offset + x1 * 4;
+      const idx01 = y1_offset + x0 * 4;
+      const idx11 = y1_offset + x1 * 4;
+
+      const dstIdx = dstY_offset + dx * 4;
+
+      dst[dstIdx]     = (srcData[idx00]     * w00 + srcData[idx10]     * w10 + srcData[idx01]     * w01 + srcData[idx11]     * w11) + 0.5 | 0;
+      dst[dstIdx + 1] = (srcData[idx00 + 1] * w00 + srcData[idx10 + 1] * w10 + srcData[idx01 + 1] * w01 + srcData[idx11 + 1] * w11) + 0.5 | 0;
+      dst[dstIdx + 2] = (srcData[idx00 + 2] * w00 + srcData[idx10 + 2] * w10 + srcData[idx01 + 2] * w01 + srcData[idx11 + 2] * w11) + 0.5 | 0;
+      dst[dstIdx + 3] = (srcData[idx00 + 3] * w00 + srcData[idx10 + 3] * w10 + srcData[idx01 + 3] * w01 + srcData[idx11 + 3] * w11) + 0.5 | 0;
     }
   }
 
