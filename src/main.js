@@ -163,7 +163,11 @@ function showLoading(show) {
 async function loadTestImage(presetName) {
   showLoading(true);
   try {
-    const path = `./test-images/${presetName}`;
+    let base = window.location.pathname;
+    if (!base.endsWith('/')) {
+      base += '/';
+    }
+    const path = `${base}test-images/${presetName}`;
     console.log('Fetching test image preset:', path);
     const response = await fetch(path);
     if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status} ${response.statusText}`);
