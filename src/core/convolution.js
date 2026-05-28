@@ -173,6 +173,8 @@ export function applyConvolutionRaw(pixelArray, width, height, kernel3x3, channe
         // Нормализация
         if (shouldNormalize) {
           sum /= kernelSum;
+        } else if (kernelSum === 0) {
+          sum = Math.abs(sum);
         }
 
         // Ограничение до [0, 255]

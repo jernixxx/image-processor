@@ -163,11 +163,7 @@ function showLoading(show) {
 async function loadTestImage(presetName) {
   showLoading(true);
   try {
-    let base = window.location.pathname;
-    if (!base.endsWith('/')) {
-      base += '/';
-    }
-    const path = `${base}test-images/${presetName}`;
+    const path = `test-images/${presetName}`;
     console.log('Fetching test image preset:', path);
     const response = await fetch(path);
     if (!response.ok) throw new Error(`Ошибка загрузки: ${response.status} ${response.statusText}`);
@@ -400,12 +396,13 @@ function updateChannelThumb(itemEl, channelKey) {
   const src = state.currentData;
   const w = src.width, h = src.height;
 
-  // Создаём миниатюру в градациях серого для этого канала
+  // Создаём миниатюру с цветовой тонировкой канала
   const thumbData = new ImageData(36, 36);
   const td = thumbData.data;
   const sd = src.data;
 
   const channelIdx = { r: 0, g: 1, b: 2, a: 3 }[channelKey];
+  const isGrayscale = state.channelCount <= 2;
 
   for (let ty = 0; ty < 36; ty++) {
     for (let tx = 0; tx < 36; tx++) {
@@ -414,7 +411,16 @@ function updateChannelThumb(itemEl, channelKey) {
       const si = (sy * w + sx) * 4;
       const ti = (ty * 36 + tx) * 4;
       const val = sd[si + channelIdx];
-      td[ti] = td[ti + 1] = td[ti + 2] = val;
+
+      if (isGrayscale || channelKey === 'a') {
+        // Для серого/альфа — оставляем градации серого
+        td[ti] = td[ti + 1] = td[ti + 2] = val;
+      } else {
+        // Для RGB — тонируем цветом канала
+        td[ti]     = channelKey === 'r' ? val : 0;
+        td[ti + 1] = channelKey === 'g' ? val : 0;
+        td[ti + 2] = channelKey === 'b' ? val : 0;
+      }
       td[ti + 3] = 255;
     }
   }
@@ -466,6 +472,7 @@ canvas.addEventListener('click', (e) => {
 
   if (imgX < 0 || imgX >= state.currentData.width || imgY < 0 || imgY >= state.currentData.height) return;
 
+  // Всегда читаем из currentData (реальные данные пикселя), а не из отображаемых
   const idx = (imgY * state.currentData.width + imgX) * 4;
   const d = state.currentData.data;
   const r = d[idx], g = d[idx + 1], b = d[idx + 2], a = d[idx + 3];
@@ -484,9 +491,8 @@ canvas.addEventListener('click', (e) => {
   $('#eyedropper-lab-a').textContent = lab.a.toFixed(2);
   $('#eyedropper-lab-b').textContent = lab.b.toFixed(2);
 
-  // Учитываем отключение альфа-канала в UI при предпросмотре цвета
-  const displayAlpha = state.channels.a ? (a / 255) : 1;
-  $('#eyedropper-color-preview').style.background = `rgba(${r},${g},${b},${displayAlpha})`;
+  // Предпросмотр цвета — всегда показываем реальный цвет с альфа
+  $('#eyedropper-color-preview').style.background = `rgba(${r},${g},${b},${a / 255})`;
 });
 
 // Показываем координаты курсора на canvas
@@ -507,10 +513,6 @@ canvas.addEventListener('mousemove', (e) => {
 canvas.addEventListener('mouseleave', () => {
   els.statusCursor.textContent = '';
 });
-
-// ==========================================
-// Уровни (Levels)
-// ==========================================
 
 // ==========================================
 // Уровни (Levels)
@@ -1162,6 +1164,9 @@ function openFilterDialog() {
   filterPreset.value = 'identity';
   loadKernelPreset('identity');
   
+  // Сбрасываем флаг предпросмотра
+  filterPreview.checked = true;
+  
   // Динамически настраиваем чекбоксы каналов под изображение
   updateFilterChannelsUI();
 
@@ -1239,6 +1244,10 @@ filterPreview.addEventListener('change', () => {
   if (filterPreview.checked) {
     applyFilterPreview();
   } else {
+    if (filterWorker) {
+      filterWorker.terminate();
+      filterWorker = null;
+    }
     state.currentData = new ImageData(
       new Uint8ClampedArray(filterBackup),
       state.doc.width, state.doc.height
@@ -1328,6 +1337,10 @@ function applyFilterWithWorker(srcData, kernel, channels, edgeMode) {
 }
 
 $('#filter-close').addEventListener('click', () => {
+  if (filterWorker) {
+    filterWorker.terminate();
+    filterWorker = null;
+  }
   state.currentData = new ImageData(
     new Uint8ClampedArray(filterBackup),
     state.doc.width, state.doc.height

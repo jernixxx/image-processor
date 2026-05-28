@@ -106,6 +106,8 @@ function applyConvolutionRaw(pixelArray, width, height, kernel3x3, channels, edg
 
         if (shouldNormalize) {
           sum /= kernelSum;
+        } else if (kernelSum === 0) {
+          sum = Math.abs(sum);
         }
 
         dst[dstIdx + c] = Math.max(0, Math.min(255, Math.round(sum)));
